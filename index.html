@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zup Premium | Produção</title>
+    <!-- Bibliotecas de Produção -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #000; color: #fff; }
+        .page { display: none; height: 100vh; width: 100%; max-width: 450px; margin: 0 auto; position: relative; }
+        .active { display: block; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- CONTAINER PRINCIPAL -->
+    <div id="app" class="max-w-[450px] mx-auto bg-black h-screen relative shadow-2xl border-x border-gray-900 overflow-hidden">
+        
+        <!-- PÁGINA 1: LOGIN / CADASTRO -->
+        <section id="auth-page" class="page active flex flex-col justify-center p-8 bg-gradient-to-b from-gray-900 to-black">
+            <div class="text-center mb-10">
+                <h1 class="text-5xl font-black text-green-500 italic">ZUP</h1>
+                <p class="text-gray-400 mt-2">Assista vídeos e receba via Pix</p>
+            </div>
+            <div class="space-y-4">
+                <input id="auth-email" type="email" placeholder="Seu E-mail" class="w-full p-4 rounded-2xl bg-gray-800 border border-gray-700 outline-none focus:border-green-500">
+                <input id="auth-password" type="password" placeholder="Sua Senha" class="w-full p-4 rounded-2xl bg-gray-800 border border-gray-700 outline-none focus:border-green-500">
+                <button onclick="handleAuth()" class="w-full bg-green-500 text-black font-bold p-4 rounded-2xl active:scale-95 transition">ENTRAR / CADASTRAR</button>
+            </div>
+        </section>
+
+        <!-- PÁGINA 2: FEED (PTC) -->
+        <section id="feed-page" class="page">
+            <div class="h-full w-full bg-black snap-y snap-mandatory overflow-y-scroll hide-scroll">
+                <div class="snap-start h-full w-full relative flex items-center justify-center">
+                    <!-- VIDEO PLAYER -->
+                    <video id="main-video" class="h-full w-full object-cover" src="https://assets.mixkit.co/videos/preview/mixkit-all-the-neon-signs-at-night-1184-large.mp4" loop playsinline></video>
+                    
+                    <!-- RECOMPENSA OVERLAY -->
+                    <div class="absolute top-0 w-full p-6 bg-gradient-to-b from-black/80 to-transparent">
+                        <div class="flex justify-between items-center">
+                            <div class="bg-black/50 backdrop-blur-md border border-green-500/30 px-4 py-2 rounded-2xl">
+                                <span class="text-xs block text-gray-400">SEU SALDO</span>
+                                <span id="user-balance" class="text-green-400 font-bold">R$ 0,00</span>
+                            </div>
+                            <div class="text-right">
+                                <span id="status-label" class="text-[10px] bg-red-500 px-2 py-1 rounded-full animate-pulse font-bold">AGUARDANDO...</span>
+                            </div>
+                        </div>
+                        <!-- BARRA DE PROGRESSO -->
+                        <div class="w-full bg-gray-800 h-1.5 mt-4 rounded-full overflow-hidden">
+                            <div id="video-progress" class="bg-green-500 h-full w-0 transition-all duration-300"></div>
+                        </div>
+                    </div>
+
+                    <!-- BOTÕES LATERAIS -->
+                    <div class="absolute right-4 bottom-24 flex flex-col gap-6">
+                        <button class="flex flex-col items-center"><div class="p-3 bg-white/10 rounded-full"><i data-lucide="heart"></i></div><span class="text-xs">1.2k</span></button>
+                        <button class="flex flex-col items-center"><div class="p-3 bg-white/10 rounded-full"><i data-lucide="message-square"></i></div><span class="text-xs">85</span></button>
+                        <button class="flex flex-col items-center"><div class="p-3 bg-white/10 rounded-full"><i data-lucide="share-2"></i></div><span class="text-xs">Pix</span></button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- PÁGINA 3: CARTEIRA -->
+        <section id="wallet-page" class="page bg-gray-50 p-6 overflow-y-auto">
+            <h2 class="text-2xl font-black text-black mb-6">Minha Carteira</h2>
+            <div class="bg-black p-8 rounded-[32px] shadow-xl mb-8">
+                <span class="text-gray-400 text-xs uppercase tracking-widest">Saldo Total</span>
+                <h1 id="wallet-balance-total" class="text-4xl font-bold text-white mt-2">R$ 0,00</h1>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-white p-4 rounded-2xl border border-gray-200">
+                    <label class="text-xs font-bold text-gray-400 block mb-1 uppercase">Chave Pix</label>
+                    <input id="pix-key" type="text" placeholder="CPF, E-mail ou Telefone" class="w-full text-black outline-none font-medium">
+                </div>
+                <button onclick="requestWithdrawal()" class="w-full bg-green-500 text-black font-black p-5 rounded-2xl shadow-lg active:scale-95 transition">SOLICITAR SAQUE PIX</button>
+                <p class="text-center text-[10px] text-gray-400">Mínimo para saque: R$ 2,00</p>
+            </div>
+        </section>
+
+        <!-- MENU INFERIOR FIXO -->
+        <nav id="main-nav" class="hidden absolute bottom-0 w-full bg-black/90 backdrop-blur-xl border-t border-gray-800 p-4 flex justify-around items-center z-50">
+            <button onclick="navigate('feed-page')" class="text-white"><i data-lucide="play-circle"></i></button>
+            <button onclick="navigate('wallet-page')" class="text-gray-500"><i data-lucide="wallet"></i></button>
+            <button onclick="logout()" class="text-gray-500"><i data-lucide="log-out"></i></button>
+        </nav>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO SUPABASE ---
+        const SUPABASE_URL = "https://rjaatscxgiewshfzmcga.supabase.co";
+        const SUPABASE_KEY = "sb_publishable_T6R3GrqMlZtCzJQ4UypeNQ_TmMdGWXX";
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // --- VARIÁVEIS DE ESTADO ---
+        let currentUser = null;
+        let currentBalance = 0.00;
+        const video = document.getElementById('main-video');
+        const progress = document.getElementById('video-progress');
+
+        // --- INICIALIZAÇÃO ---
+        lucide.createIcons();
+
+        // --- FUNÇÕES DE NAVEGAÇÃO ---
+        function navigate(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            if(pageId === 'feed-page') {
+                video.play().catch(() => {});
+                document.getElementById('main-nav').classList.remove('hidden');
+            }
+        }
+
+        // --- AUTENTICAÇÃO ---
+        async function handleAuth() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+
+            // Tenta logar, se não conseguir, tenta cadastrar
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            
+            if (error) {
+                const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email, password });
+                if (signUpError) return alert(signUpError.message);
+                alert("Conta criada! Bem-vindo.");
+            }
+            
+            checkUser();
+        }
+
+        async function checkUser() {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                currentUser = user;
+                // Carregar saldo do Banco
+                let { data: perfil } = await supabase.from('perfil').select('saldo').eq('id', user.id).single();
+                if(!perfil) {
+                    await supabase.from('perfil').insert([{ id: user.id, email: user.email, saldo: 0 }]);
+                    currentBalance = 0;
+                } else {
+                    currentBalance = perfil.saldo;
+                }
+                updateUI();
+                navigate('feed-page');
+            }
+        }
+
+        // --- LÓGICA DE RECOMPENSA ---
+        video.ontimeupdate = () => {
+            const perc = (video.currentTime / video.duration) * 100;
+            progress.style.width = perc + '%';
+            document.getElementById('status-label').innerText = "ASSISTINDO...";
+            document.getElementById('status-label').className = "text-[10px] bg-blue-500 px-2 py-1 rounded-full animate-pulse font-bold";
+
+            if(perc >= 98 && video.dataset.counted !== "true") {
+                video.dataset.counted = "true";
+                addReward(0.10);
+            }
+        };
+
+        async function addReward(val) {
+            currentBalance += val;
+            const { error } = await supabase.from('perfil').update({ saldo: currentBalance }).eq('id', currentUser.id);
+            if(!error) {
+                updateUI();
+                document.getElementById('status-label').innerText = "RECOMPENSA COLETADA!";
+                document.getElementById('status-label').className = "text-[10px] bg-green-500 px-2 py-1 rounded-full font-bold text-black";
+                setTimeout(() => { video.dataset.counted = "false"; }, 2000);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('user-balance').innerText = `R$ ${currentBalance.toFixed(2)}`;
+            document.getElementById('wallet-balance-total').innerText = `R$ ${currentBalance.toFixed(2)}`;
+        }
+
+        async function requestWithdrawal() {
+            const pix = document.getElementById('pix-key').value;
+            if(currentBalance < 20) return alert("Você precisa de pelo menos R$ 20,00");
+            if(!pix) return alert("Insira sua chave Pix");
+
+            const { error } = await supabase.from('saques').insert([
+                { user_id: currentUser.id, valor: currentBalance, chave_pix: pix, status: 'pendente' }
+            ]);
+
+            if(!error) {
+                alert("Saque solicitado! O admin irá processar em até 24h.");
+            }
+        }
+
+        async function logout() {
+            await supabase.auth.signOut();
+            location.reload();
+        }
+
+        window.onload = checkUser;
+    </script>
+</body>
+</html>
